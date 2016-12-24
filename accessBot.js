@@ -67,6 +67,20 @@ var update = {                // requires mongo and sockets
             } else { sockets.io.emit('message', 'Inconcievable!');}               // I don't think that word means what you think it means
         });
     },
+    payment: function(paymentInfo){                                    // morph payment info to our schema or do this on client?
+        mongo.saveNewDoc(mongo.payment, paymentInfo, update.ipnError); // save regardless
+        if(paymentInfo.paidFor === 'Subscription Membership'){
+            monthlySubscription(paymentInfo);
+        }
+    },
+    monthlySubscription: function(){
+
+    },
+    ipnSuccess: function(){},  // we could pass this as last argument of saveDoc
+    ipnError: function(error){ // we pass this as third error handling argument of saveDoc
+        error = 'IPN update error: ' + error;
+        console.log(error);
+    }
 };
 
 var search = {                 // depends on mongo and sockets
@@ -113,43 +127,51 @@ var search = {                 // depends on mongo and sockets
 };
 
 var register = {                                                 // requires mongo, sockets
-    member: function(registration){                              // registration event
-        var member = new mongo.member(registration);             // create member from registration object
-        member.save(                                             // yes this is a function that takes a function that takes a function
-            register.response(function(){slack.invite(registration.email, registration.fullname);})
-        );                                                       // save method of member scheme: write to mongo!
+    member: function(newMember){                                 // called when there is a new member to register
+        mongo.saveNewDoc(mongo.member, newMember, register.onError, register.memberSignupSuccess);
     },
-    newPayment: function(newPayment){                            // conform to schema at payment listener
-        var payment = new mongo.payment(newPayment);             // model out a new doc to write to mongo
-        payment.save(register.reponse);                          // get a function that handles a generic error and succes case
+    memberSignupSuccess: function(){                             // called on succesful save event
+        sockets.io.emit('message', 'member save success');       // show save happened to web app
+        slack.invite(registration.email, registration.fullname); // invite new member to slack
     },
-    bot: function(robot){
-        var bot = new mongo.bot(robot);                          // create a new bot w/info recieved from client/admin
-        bot.save(register.response);                             // save method of bot scheme: write to mongo!
+    bot: function(newBot){                                       // called when there is a new bot to register
+        mongo.saveNewDoc(mongo.bot, newBot, register.onError, register.createdBot);
     },
-    response: function(succesFunction){
-        return function(error){                                          // callback for member save
-            if(error){ sockets.io.emit('message', 'error:' + error); }   // given a write error
-            else {
-                if(succesFunction){succesFunction();}                    // given a succes case run it
-                sockets.io.emit('message', 'save success');              // show save happened to web app
-            }
-        };
+    createdBot: function(){                                      // called on succesful new bot registration
+        sockets.io.emit('message', 'bot save success');          // show save happened to web app
     },
+    onError: function(error){                                    // called when a save is unsuccesfull
+        error = 'Update error: ' + error;
+        console.log(error);                                      // log there was and issue
+        sockets.io.emit('message', error);                       // let client know this registaration was unsuccesfull
+    }
 };
 
 
-/* var ioClient = { // Prototype IPN listener connection
-    socket: require('socket.io-client')(process.env.PAYMENT_NOTIFICATION_SERVER),
-    init: function(){ // notify authorization or denial: make sure arduino has start and end chars to read
-        // probably put something here to authenticate with server that this is real doorboto
-        ioClient.socket.emit('authenticate', process.env.DOORBOTO_TOKEN); // authenticate w/relay server
-        //  ioClient.socket.on('paymentMade', ioClient.paymentMade);
+var ioClient = { // Prototype IPN listener connection
+    init: function(settings){ // notify authorization or denial: make sure arduino has start and end chars to read
+        try {                                                               // we don't depend on this working so lets just try it
+            ioClient.socket = require('socket.io-client')(settings.server); // connect with socket server
+            ioClient.socket.emit('confirm', settings.token);                // some shitty shared key
+            ioClient.socket.on('iAmYourFather', ioClient.onEvents);         // on confirmation that we are ok to talk
+        } catch(error){
+            console.log('failed IPN listener connection:' + error);         // record this event
+            setTimeout(function(){ioClient.init(settings);}, 3600000);      // try to reconnect in a hour is something goes wrong
+        }
     },
-    paymentMade: function(data){
-        // add made payment to data base to either renew or add a pending card holder
+    onEvents: function(tokenToConfirm){
+        return function(){
+            ioClient.socket.on('paymentMade', update.payment);              // on payment event handle it
+        };
+    },
+    send: function(data){
+        if(ioClient.socket){
+            try {
+                ioClient.socket.emit(data);
+            } catch(error){console.log('could not emit data to cloud');}
+        } else {console.log('socket not created');}
     }
-}; */
+};
 
 var sockets = {                                                           // depends on slack, register, search, auth: handle socket events
     io: require('socket.io'),
@@ -232,8 +254,15 @@ var serve = {                                                // depends on cooki
     }
 };
 
+var clientSocketSettings = { // json object that hold client socket settings to communicate with payment notification relay
+    server: process.env.PAYMENT_NOTIFICATION_SERVER,         // socket.io server to connect with
+    shared_key: process.env.SHARED_KEY,                      // shared key for decrypting and excrypting info sent back and forth
+    encryption: process.env.ENCRYPT_ALGORITHM,               // algorithm used to encrypt information
+};
+
 // High level start up sequence
 mongo.init(process.env.MONGODB_URI);                          // conect to our mongo server
+ioClient.init(clientSocketSettings);                          // set up socket io client w/ enviornment settings
 var http = serve.theSite();                                   // Set up site framework
 sockets.listen(http);                                         // listen and handle socket connections
 http.listen(process.env.PORT);                                // listen on specified PORT enviornment variable
