@@ -179,7 +179,7 @@ var sockets = {                                                           // dep
 
 var routes = {                                                            // depends on auth: handles routes
     auth: function(req, res){                                             // get route that acccess control machine pings
-        auth.orize(routes.grantAccess, routes.denyAccess)(req.params);    // create auth event handler & execute it against credentials
+        auth.orize(routes.grantAccess(res), routes.denyAccess(res))(req.params);    // create auth event handler & execute it against credentials
     },
     admin: function(req, res){                                            // post by potential admin request to sign into system
         if(req.body.fullname === 'admin' && req.body.password === process.env.MASTER_PASS){
@@ -187,13 +187,17 @@ var routes = {                                                            // dep
         } else {res.send('denied');}                                      // YOU SHALL NOT PASS.. maybe a redirect(/) would be more helpful
     },
     login: function(req, res){res.render('signin', {csrfToken: req.csrfToken()});}, // get request to sign into system
-    grantAccess: function success(memberName){                            // route callback for granting access
-        res.status(200).send('a');
-        slack.send(memberName + ' just checked in');
+    grantAccess: function(res){
+        return function success(memberName){                            // route callback for granting access
+            res.status(200).send('a');
+            slack.send(memberName + ' just checked in');
+        };
     },
-    denyAccess: function (msg){                                           // route callback for denying access
-        res.status(403).send(msg + ": denied access");
-        slack.send(msg + ': denied access');
+    denyAccess: function(res){
+        return function (msg){                                           // route callback for denying access
+            res.status(403).send(msg + ": denied access");
+            slack.send(msg + ': denied access');
+        };
     }
 };
 
