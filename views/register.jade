@@ -1,0 +1,98 @@
+// register.jade.pug.whatever ~ Copyright 2016 Manchester Makerspace ~ License MIT
+// Register users into our access control system
+// This html markeddown into Jade/Pug templating language, dots are classes and hashes are IDs
+// <div> divisions are implicate on instatiating ids or classes
+// nesting is pythonic aka actually important
+extends ./header.jade
+
+block content
+    .app.container
+        h1#msg Have someone scan a card!
+        #findMember.jumbotron.view
+            h1 Find a member
+            p#findMsg
+            .formField
+                .form-group
+                    label(for=name) Fullname
+                    input#findName.form-control(type="text", name="name")
+                button.submit.btn.btn-success.btn-lg Find
+        #registerMember.jumbotron.view
+            h1 Member signup
+            p#memMsg Sign up member:
+            .formField
+                .form-group
+                    label(for="acountType") Member type / Access Status
+                    select#accountType.form-control
+                        option Individual
+                        option Group
+                        option Admin
+                        option Contractor
+                .form-group.regEntries#enterGroup(style="display:none;")
+                    label(for="groupEntry") Enter existing or new group name
+                    input#groupEntry.form-control(type="text", name="groupEntry")
+                    button#findGroup.pull-right.btn.btn-lg.btn-success Find
+                    p#groupFindMsg If new group, press find to be sure and fill out rest of information
+                .form-group.regEntries#enterGroupSize(style="display:none;")
+                    label(for="groupSize") Size of group
+                    input#groupSize.form-control(type="number" name="groupSize")
+                .form-group#nameEntry
+                    label(for="name") Fullname
+                    input#name.form-control(type="text" name="name")
+                .form-group.regEntries#passwordEntry(style="display:none;")
+                    label(for="password") Password
+                    input#password.form-control(type="password" name="password")
+                .form-group.regEntries#monthsEntry
+                    label(for="months") Months of access
+                    input#months.form-control(type="number" name="months" min="1" max="13")
+                .form-group.regEntries#startEntry
+                    label(for="startDate") Start Time (leave blank for current date)
+                    input#startDate.form-control(type="date", min="2016-05-17", name="startDate")
+                .form-group.regEntries#enterEmail
+                    lable(for="email") Email (slack invite)
+                    input#email.form-control(type="email")
+                button.submit#regBtn.btn.btn-success.btn-lg Register
+                button.reject.btn.btn-success.btn-lg.pull-right Cancel
+        #registerBot.jumbotron.view
+            h1 Bot Registration
+            p#botMsg Sign up bot:
+            .formField
+                .form-group
+                    label(for="botName") Bot's name
+                    input#botName.form-control(type="text" name="botName" required="true")
+                .form-group
+                    label(for="botType") Type of bot
+                    select#botType.form-control
+                        option Tool
+                        option Door
+                        option Storage
+                button.submit.btn.btn-success.btn-lg Register
+                button.reject.btn.btn-success.btn-lg.pull-right Reject
+        #foundMember.jumbotron(style="display:none;")
+            h1 Member display
+            button#cardScan.btn.btn-lg.btn-success.pull-right(style="display:none;") Member Scaned
+            span Fullname:
+            p#nameResult
+            span Status:
+            p#memberStatus
+            span Group:
+            p#nameOfGroup
+            span Member Expiration:
+            P#expiration
+            span Expired:
+            p#expired
+            span Can access:
+            p#accesspoints
+            button#renew.btn.btn-success.btn-lg.pull-left Renew
+            input#renewMonths(type="number", name="renewMonths", min="1" max="13")
+            span :Months
+            button#revokeAll.btn.btn-danger.btn-lg.pull-right Revoke all
+    script( type="text/javascript" 
+            src='https://code.jquery.com/jquery-2.2.4.min.js' 
+            integrity='sha256-BbhdlvQf/xTY9gja0Dq3HiwQF8LaCRTXxZKRutelT44='
+            crossorigin="anonymous")
+    script( type="text/javascript"
+            src='https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/js/bootstrap.min.js'
+            integrity='sha384-0mSbJDEHialfmuBBQP6A4Qrprq5OVfW37PRR3j5ELqxss1yVqOtnepnHVP9aJ7xS'
+            crossorigin="anonymous")
+    script(type="text/javascript" src="js/socketio145.js")
+    script(type="text/javascript" src="js/register.js")

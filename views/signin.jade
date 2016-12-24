@@ -1,0 +1,25 @@
+extends ./header.jade
+// signin.jade ~ Copyright 2016 Manchester Makerspace ~ License MIT
+
+block content
+    .app.container
+        #signin.jumbotron
+            h1 Sign in
+            p In order to register members, Please sign in
+            form(method="post")
+                input(type="hidden", name="_csrf", value=csrfToken)
+                .form-group
+                    label#nameField(for="fullname", required="true") Fullname
+                    input.form-control(type="text", name="fullname", required="true")
+                #password.form-group
+                    label(for="password", required="true") Password
+                    input.form-control(type="password", name="password", required="true")
+                input#submit.btn.btn-success.btn-lg(type="submit", value="login")
+    script(type="text/javascript",
+           src='https://code.jquery.com/jquery-2.2.4.min.js',
+           integrity='sha256-BbhdlvQf/xTY9gja0Dq3HiwQF8LaCRTXxZKRutelT44=',
+           crossorigin="anonymous")
+    script(type="text/javascript",
+           src='https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/js/bootstrap.min.js',
+           integrity='sha384-0mSbJDEHialfmuBBQP6A4Qrprq5OVfW37PRR3j5ELqxss1yVqOtnepnHVP9aJ7xS',
+           crossorigin="anonymous")
