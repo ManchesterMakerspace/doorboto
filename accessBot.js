@@ -161,19 +161,23 @@ var sockets = {                                                           // dep
             socket.on('find', search.find);                               // event admin client looks to find a member
             socket.on('revokeAll', search.revokeAll);                     // admin client revokes member privilages
             // bots should probably have to give us a shared key for next event handler to work
-            socket.on('auth', auth.orize(sockets.grantAccess, sockets.denyAccess));
+            socket.on('auth', auth.orize(sockets.grantAccess(socket), sockets.denyAccess(socket)));
                               // get auth event handler by passing success & fail callbacks
             socket.on('renew', update.renew);                             // renewal is passed from admin client
             socket.on('findGroup', search.group);                         // find to to register under a group
         });
     },
-    grantAccess: function(memberName){                                    // is called on successful authorization
-        sockets.io.to(socket.id).emit('auth', 'a');
-        slack.send(memberName + ' just checked in');
+    grantAccess: function(socket){
+        return function(memberName){                                    // is called on successful authorization
+            sockets.io.to(socket.id).emit('auth', 'a');
+            slack.send(memberName + ' just checked in');
+        };
     },
-    denyAccess: function(msg){                                            // is called on failed authorization
-        sockets.io.to(socket.id).emit('auth', 'd');
-        slack.send(msg + ': denied access');
+    denyAccess: function(socket){
+        return function(msg){                                            // is called on failed authorization
+            sockets.io.to(socket.id).emit('auth', 'd');
+            slack.send(msg + ': denied access');
+        };
     }
 };
 
