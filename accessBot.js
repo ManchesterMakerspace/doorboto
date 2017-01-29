@@ -138,19 +138,6 @@ var register = {                                                 // requires mon
     },
 };
 
-
-/* var ioClient = { // Prototype IPN listener connection
-    socket: require('socket.io-client')(process.env.PAYMENT_NOTIFICATION_SERVER),
-    init: function(){ // notify authorization or denial: make sure arduino has start and end chars to read
-        // probably put something here to authenticate with server that this is real doorboto
-        ioClient.socket.emit('authenticate', process.env.DOORBOTO_TOKEN); // authenticate w/relay server
-        //  ioClient.socket.on('paymentMade', ioClient.paymentMade);
-    },
-    paymentMade: function(data){
-        // add made payment to data base to either renew or add a pending card holder
-    }
-}; */
-
 var sockets = {                                                           // depends on slack, register, search, auth: handle socket events
     io: require('socket.io'),
     listen: function(server){
