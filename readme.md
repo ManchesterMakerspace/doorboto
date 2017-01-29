@@ -21,10 +21,12 @@ Here is a small shell script that sets up said variables
     # server for recieving payment notifications
     export PAYMENT_NOTIFICATION_SERVER = "http://urIPNserver"
     # State whether testing application or not
-    export TESTING_MA=true
+    export TESTING_MA="true"
+    export SERIALPORT="/dev/ttyATH0" # SerialPort for Arduino Yun
+    export MACHINE_NAME="dorboto"    # Name of that is trying to let in a user
 
     echo "Starting the accessBot!"
-    if $TESTING_MA; then
+    if [ $TESTING_MA == "true" ]; then
         export BROADCAST_CHANNEL="test_channel" # have a test channel to broadcast on
         nodemon accessBot.js
         # reloads server on source change -> sudo npm install -g nodemon

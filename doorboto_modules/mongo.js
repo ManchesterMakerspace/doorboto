@@ -23,15 +23,6 @@ var mongo = { // depends on: mongoose
             botName: {type: String, required: '{PATH} is required', unique: true},    // human given name for point of access
             type: {type: String, required: '{PATH} is required'},                     // type (door, tool, kegerator, ect)
         }));
-        mongo.payments = mongo.ose.model('payments', new Schema({
-            id: ObjectId,
-            firstname: {type: String, required: '{PATH} is required'},                // firstname of buyer
-            lastname: {type: String, required: '{PATH} is required'},                 // lastname of buyer
-            email: {type: String, required: '{PATH} is required'},                    // email of buyer (not nessiarily member)
-            paidFor: {type: String, required: '{PATH} is required'},                  // item that was paid for
-            amount: {type: Number, required: '{PATH} is required'},                   // amount of tender rendered
-            dateOfPurchase: {type: Number, required: '{PATH} is required'},           // purchased date, currently not time of membership start
-        }));
     },
     saveNewDoc: function(schema, docToSave, errorFunction, successFunction){             // helper method goes through boilerplate save motions
         var docObject = new schema(docToSave);                                        // create a new doc (makes an object id basically)

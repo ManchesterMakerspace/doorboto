@@ -1,6 +1,42 @@
 // accessBot.js ~ Copyright 2016 Manchester Makerspace ~ License MIT
-var slack = require('./doorboto_modules/slack_intergration.js');              // get slack send and invite methodes
-var mongo = require('./doorboto_modules/mongo.js');                           // grab mongoose schema and connect methods
+var slack = require('./doorboto_modules/slack_intergration.js');  // get slack send and invite methodes
+var mongo = require('./doorboto_modules/mongo.js');               // grab mongoose schema and connect methods
+var RETRY_DELAY = 5000;                                           // when to try again if no connection
+
+var arduino = {
+    serialLib: require('serialport'),  // yun DO NOT NPM INSTALL -> opkg install node-serialport, use global lib
+    init: function(arduinoPort){
+        arduino.serial = new arduino.serialLib.SerialPort(arduinoPort, {
+            baudrate: 9600,           // remember to set you sketch to go this same speed
+            parser: arduino.serialLib.parsers.readline('\n')
+        });
+        arduino.serial.on('open', arduino.open);
+        arduino.serial.on('data', arduino.read);
+        arduino.serial.on('close', arduino.close);
+        arduino.serial.on('error', arduino.error);
+    },
+    open: function(){},                        // what to do when serial connection opens up with arduino
+    read: function(data){                      // when we get data from Arduino, we basical only expect a card ID
+        data = data.slice(0, data.length-1);   // exclude newline char from card ID
+        var authFunction = auth.orize(arduino.grantAccess, arduino.denyAccess); // create authorization function
+        authFunction({machine: process.env.MACHINE_NAME, card: data});          // use authorization function
+    },
+    close: function(){                               // happens if serial connection is interupted
+        arduino.init();                              // try to re-establish if port was closed
+    },
+    error: function(error){                          // given something went wrong try to re-establish connection
+        setTimeout(arduino.init, RETRY_DELAY);       // retry every half a minute NOTE this will keep a heroku server awake
+    },
+    grantAccess: function(memberName){               // is called on successful authorization
+        arduino.serial.write('<a>');                 // a char grants access: wakkas help arduino know this is a distinct command
+        slack.send(memberName + ' just checked in'); // let members know through slack
+    },
+    denyAccess: function(msg){                       // is called on failed authorization
+        arduino.serial.write('<d>');                 // d char denies access: wakkas help arduino know this is a distinct command
+        slack.send(msg + ': denied access');         // let members know through slack
+    }
+};
+
 
 var auth = {                                                                  // depends on mongo and sockets: authorization events
     orize: function(success, fail){                                           // takes functions for success and fail cases
@@ -219,7 +255,7 @@ var serve = {                                                // depends on cooki
         var router = serve.express.Router();                 // create express router object to add routing events to
         router.get('/', routes.login);                       // log in page
         router.post('/', routes.admin);                      // request registration page
-        if(process.env.TESTING_MA){
+        if(process.env.TESTING_MA === 'true'){
             router.get('/:machine/:card', routes.auth);      // authentication route
         }
         app.use(router);                                     // get express to user the routes we set
@@ -228,7 +264,8 @@ var serve = {                                                // depends on cooki
 };
 
 // High level start up sequence
-mongo.init(process.env.MONGODB_URI);                          // conect to our mongo server
+mongo.init(process.env.MONGODB_URI);                          // connect to our mongo server NOTE: this currently kills server on no connection
+arduino.init(process.env.SERIALPORT);                         // connect to arduino
 var http = serve.theSite();                                   // Set up site framework
 sockets.listen(http);                                         // listen and handle socket connections
 http.listen(process.env.PORT);                                // listen on specified PORT enviornment variable
