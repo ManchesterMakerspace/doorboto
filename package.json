@@ -19,13 +19,10 @@
   "private": true,
   "dependencies": {
     "@slack/client": "^3.6.0",
-    "body-parser": "^1.15.1",
-    "client-sessions": "^0.7.0",
-    "compression": "^1.6.2",
-    "csurf": "^1.8.3",
-    "express": "^4.13.4",
-    "jade": "^1.11.0",
+    "express": "^4.14.1",
     "mongoose": "^4.4.19",
+    "request": "^2.79.0",
+    "serialport": "^4.0.7",
     "socket.io": "^1.4.6"
   },
   "engines": {

@@ -1,9 +1,9 @@
 // accessBot.js ~ Copyright 2016 Manchester Makerspace ~ License MIT
-var slack = require('./doorboto_modules/slack_intergration.js');  // get slack send and invite methodes
+var slack = require('./doorboto_modules/slack_intergration.js');  // get slack send and invite methodes requires('request')
 var mongo = require('./doorboto_modules/mongo.js');               // grab mongoose schema and connect methods
 var RETRY_DELAY = 5000;                                           // when to try again if no connection
 
-var arduino = {
+var arduino = {                        // does not need to be connected to and arduino, will try to connect to one though
     serialLib: require('serialport'),  // yun DO NOT NPM INSTALL -> opkg install node-serialport, use global lib
     init: function(arduinoPort){
         arduino.serial = new arduino.serialLib.SerialPort(arduinoPort, {
@@ -15,15 +15,13 @@ var arduino = {
         arduino.serial.on('close', arduino.close);
         arduino.serial.on('error', arduino.error);
     },
-    open: function(){},                        // what to do when serial connection opens up with arduino
-    read: function(data){                      // when we get data from Arduino, we basical only expect a card ID
-        data = data.slice(0, data.length-1);   // exclude newline char from card ID
+    open: function(){console.log('connected to something');},                   // what to do when serial connection opens up with arduino
+    read: function(data){                           // when we get data from Arduino, we basical only expect a card ID
+        data = data.slice(0, data.length-1);        // exclude newline char from card ID
         var authFunction = auth.orize(arduino.grantAccess, arduino.denyAccess); // create authorization function
         authFunction({machine: process.env.MACHINE_NAME, card: data});          // use authorization function
     },
-    close: function(){                               // happens if serial connection is interupted
-        arduino.init();                              // try to re-establish if port was closed
-    },
+    close: function(){arduino.init();},              // try to re-establish if serial connection is interupted
     error: function(error){                          // given something went wrong try to re-establish connection
         setTimeout(arduino.init, RETRY_DELAY);       // retry every half a minute NOTE this will keep a heroku server awake
     },
@@ -208,12 +206,6 @@ var routes = {                                                            // dep
     auth: function(req, res){                                             // get route that acccess control machine pings
         auth.orize(routes.grantAccess(res), routes.denyAccess(res))(req.params);    // create auth event handler & execute it against credentials
     },
-    admin: function(req, res){                                            // post by potential admin request to sign into system
-        if(req.body.fullname === 'admin' && req.body.password === process.env.MASTER_PASS){
-            res.render('register', {csrfToken: req.csrfToken()});
-        } else {res.send('denied');}                                      // YOU SHALL NOT PASS.. maybe a redirect(/) would be more helpful
-    },
-    login: function(req, res){res.render('signin', {csrfToken: req.csrfToken()});}, // get request to sign into system
     grantAccess: function(res){
         return function success(memberName){                            // route callback for granting access
             res.status(200).send('a');
@@ -228,33 +220,12 @@ var routes = {                                                            // dep
     }
 };
 
-var cookie = {                                               // Admin authentication / depends on client-sessions
-    session: require('client-sessions'),                     // mozilla's cookie library
-    ingredients: {                                           // personally I prefer chocolate chips
-        cookieName: 'session',                               // guess we could call this something different
-        secret: process.env.SESSION_SECRET,                  // do not track secret in version control
-        duration: 7 * 24  * 60 * 60 * 1000,                  // cookie times out in x amount of time
-    },
-    meWant: function(){return cookie.session(cookie.ingredients);}, // nom nom nom!
-    decode: function(content){return cookie.session.util.decode(cookie.ingredients, content);},
-};
-
 var serve = {                                                // depends on cookie, routes, sockets: handles express server setup
     express: require('express'),                             // server framework library
-    parse: require('body-parser'),                           // JSON parsing library
     theSite: function (){                                    // methode call to serve site
         var app = serve.express();                           // create famework object
         var http = require('http').Server(app);              // http server for express framework
-        app.set('view engine', 'jade');                      // use jade to template html files, because bad defaults
-        app.use(require('compression')());                   // gzipping for requested pages
-        app.use(serve.parse.json());                         // support JSON-encoded bodies
-        app.use(serve.parse.urlencoded({extended: true}));   // support URL-encoded bodies
-        app.use(cookie.meWant());                            // support for cookies (admin auth)
-        app.use(require('csurf')());                         // Cross site request forgery tokens (admin auth)
-        app.use(serve.express.static(__dirname + '/views')); // serve page dependancies (sockets, jquery, bootstrap)
         var router = serve.express.Router();                 // create express router object to add routing events to
-        router.get('/', routes.login);                       // log in page
-        router.post('/', routes.admin);                      // request registration page
         if(process.env.TESTING_MA === 'true'){
             router.get('/:machine/:card', routes.auth);      // authentication route
         }
@@ -264,11 +235,11 @@ var serve = {                                                // depends on cooki
 };
 
 // High level start up sequence
-mongo.init(process.env.MONGODB_URI);                          // connect to our mongo server NOTE: this currently kills server on no connection
-arduino.init(process.env.SERIALPORT);                         // connect to arduino
-var http = serve.theSite();                                   // Set up site framework
-sockets.listen(http);                                         // listen and handle socket connections
-http.listen(process.env.PORT);                                // listen on specified PORT enviornment variable
-slack.init(process.env.BROADCAST_CHANNEL, 'Doorboto started');// fire up slack intergration, for x channel
-
+mongo.init(process.env.MONGODB_URI);                           // connect to our mongo server NOTE: this currently kills server on no connection
+arduino.init(process.env.SERIALPORT);                          // connect to arduino
+// var http = require('http')(require('express')());           // example set up http server
+var http = serve.theSite();                                    // set up post
+sockets.listen(http);                                          // listen and handle socket connections
+http.listen(process.env.PORT);                                 // listen on specified PORT enviornment variable
+slack.init(process.env.BROADCAST_CHANNEL, 'Doorboto2 started');// fire up slack intergration, for x channel
 // TODO close database and socket connections gracefully on sigint signal

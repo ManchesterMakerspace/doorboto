@@ -8,7 +8,7 @@ var slack = {
     init: function(channelToSentTo, startUpMsg){       // runs only once on server start up (may be we should timeout retrys)
         try {                                          // slack is not a dependancy, will fail softly if no internet or slack
             slack.wh = new slack.webhook(process.env.SLACK_WEBHOOK_URL, { // instantiate webhook (bot) w/ its url and profile
-                username: 'doorboto',                  // Name of bot
+                username: 'doorboto2',                 // Name of bot
                 channel: channelToSentTo,              // channel that this intergration spams in particular
                 iconEmoji: ':robot_face:',             // icon emoji that bot uses for a profile picture
             });
