@@ -1,6 +1,18 @@
 
 var mongo = { // depends on: mongoose
     ose: require('mongoose'),
+    softStart: function(db_uri, failAction){
+        try {
+            mongo.init(db_uri);                 // give mongo a go at starting up
+        } catch(error){                         // if not, well it shouldn't be game over
+            if(failAction){failAction(error);}  // allow some sort of out side log or reaction
+            setTimeout(function(){
+                mongo.softStart(db_uri, function consequtiveFail(){
+                    console.log(error + ': fail to connect to ' + db_uri);
+                });
+            }, 60000); // keep trying without re-iterating fail callback
+        }
+    },
     init: function(db_uri){
         mongo.ose.connect(db_uri);                                                    // connect to our database
         var Schema = mongo.ose.Schema; var ObjectId = Schema.ObjectId;

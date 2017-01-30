@@ -201,7 +201,7 @@ var sockets = {                                                           // dep
         };
     }
 };
-
+/*
 var routes = {                                                            // depends on auth: handles routes
     auth: function(req, res){                                             // get route that acccess control machine pings
         auth.orize(routes.grantAccess(res), routes.denyAccess(res))(req.params);    // create auth event handler & execute it against credentials
@@ -232,14 +232,18 @@ var serve = {                                                // depends on cooki
         app.use(router);                                     // get express to user the routes we set
         return http;
     }
-};
+}; */
 
 // High level start up sequence
-mongo.init(process.env.MONGODB_URI);                           // connect to our mongo server NOTE: this currently kills server on no connection
-arduino.init(process.env.SERIALPORT);                          // connect to arduino
-// var http = require('http')(require('express')());           // example set up http server
-var http = serve.theSite();                                    // set up post
-sockets.listen(http);                                          // listen and handle socket connections
-http.listen(process.env.PORT);                                 // listen on specified PORT enviornment variable
 slack.init(process.env.BROADCAST_CHANNEL, 'Doorboto2 started');// fire up slack intergration, for x channel
+arduino.init(process.env.SERIALPORT);                          // connect to arduino
+mongo.softStart(process.env.MONGODB_URI, function onFail(error){ // if we fail to intialy connect to mongo it will keep trying
+    slack.sendAndLog(error + ': fail to connect to ' + db_uri);
+});
+// mongo.init(process.env.MONGODB_URI);                        // connect to our mongo server NOTE: this currently kills server on no connection
+// var server = require('http')(require('express')());         // example set up http server
+// var server = serve.theSite();                               // set up post
+var server = require('net').createServer();                    // lets see if this is more light weight than express
+sockets.listen(server);                                        // listen and handle socket connections
+server.listen(process.env.PORT);                               // listen on specified PORT enviornment variable
 // TODO close database and socket connections gracefully on sigint signal
