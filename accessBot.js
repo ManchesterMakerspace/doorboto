@@ -1,6 +1,48 @@
 // accessBot.js ~ Copyright 2016 Manchester Makerspace ~ License MIT
-var slack = require('./doorboto_modules/slack_intergration.js');              // get slack send and invite methodes
 var mongo = require('./doorboto_modules/mongo.js');                           // grab mongoose schema and connect methods
+
+var slack = {
+    io: require('socket.io-client'),                         // to connect to our slack intergration server
+    firstConnect: false,
+    connected: false,
+    init: function(){
+        try {
+            slack.io = slack.io(process.env.MASTER_SLACKER); // slack https server
+            slack.firstConnect = true;
+        } catch (error){
+            console.log('could not connect to ' + process.env.MASTER_SLACKER + ' cause:' + error);
+            setTimeout(slack.init, 60000); // try again in a minute maybe we are disconnected from the network
+        }
+        if(slack.firstConnect){
+            slack.io.on('connect', function authenticate(){  // connect with masterslacker
+                slack.io.emit('authenticate', {
+                    token: process.env.CONNECT_TOKEN,
+                    slack: {
+                        username: 'Doorboto',
+                        channel: 'test_channel',
+                        iconEmoji: ':robot_face:'
+                    }
+                }); // its important lisner know that we are for real
+                slack.connected = true;
+            });
+            slack.io.on('disconnect', function disconnected(){slack.connected = false;});
+        }
+    },
+    send: function(msg){
+        if(slack.connected){
+            slack.io.emit('msg', msg);
+        } else {
+            console.log('404:'+msg);
+        }
+    },
+    invite: function(email, fullname){  // maybe it should use fullname in future ?
+        if(slack.connected){
+            slack.io.emit('invite', email);
+        } else {
+            console.log('invite not made for ' + fullname);
+        }
+    }
+};
 
 var auth = {                                                                  // depends on mongo and sockets: authorization events
     orize: function(success, fail){                                           // takes functions for success and fail cases
@@ -139,18 +181,6 @@ var register = {                                                 // requires mon
 };
 
 
-/* var ioClient = { // Prototype IPN listener connection
-    socket: require('socket.io-client')(process.env.PAYMENT_NOTIFICATION_SERVER),
-    init: function(){ // notify authorization or denial: make sure arduino has start and end chars to read
-        // probably put something here to authenticate with server that this is real doorboto
-        ioClient.socket.emit('authenticate', process.env.DOORBOTO_TOKEN); // authenticate w/relay server
-        //  ioClient.socket.on('paymentMade', ioClient.paymentMade);
-    },
-    paymentMade: function(data){
-        // add made payment to data base to either renew or add a pending card holder
-    }
-}; */
-
 var sockets = {                                                           // depends on slack, register, search, auth: handle socket events
     io: require('socket.io'),
     listen: function(server){
@@ -245,6 +275,6 @@ mongo.init(process.env.MONGODB_URI);                          // conect to our m
 var http = serve.theSite();                                   // Set up site framework
 sockets.listen(http);                                         // listen and handle socket connections
 http.listen(process.env.PORT);                                // listen on specified PORT enviornment variable
-slack.init(process.env.BROADCAST_CHANNEL, 'Doorboto started');// fire up slack intergration, for x channel
+slack.init();                                                 // fire up slack intergration, for x channel
 
 // TODO close database and socket connections gracefully on sigint signal
